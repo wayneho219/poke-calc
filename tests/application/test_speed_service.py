@@ -38,14 +38,12 @@ class TestSpeedService:
         assert result.my_speed == 121
         assert result.target_speed == 120
 
-    def test_cannot_outspeed_returns_minus_one(self):
+    def test_cannot_outspeed_returns_none(self):
         # user base 60, max speed = 112; target base 100, speed = 120
         user   = make_pokemon(1, 60)
         target = make_pokemon(2, 100)
         result = svc.min_sp_to_outspeed(user, target)
-        assert result.sp_needed == -1
-        assert result.my_speed == -1
-        assert result.target_speed == 120
+        assert result is None
 
     def test_equal_base_speed_same_nature(self):
         # Both base 100 neutral: user needs sp=1 to outspeed
@@ -54,3 +52,19 @@ class TestSpeedService:
         result = svc.min_sp_to_outspeed(user, target)
         assert result.sp_needed == 1
         assert result.my_speed == 121
+
+    def test_nature_aware_timid_vs_brave(self):
+        from domain.models.nature import NatureRegistry
+        import dataclasses
+        # Timid user (×1.1 speed), base 80: speed = int((80+20+0)*1.1) = 110
+        # Brave target (×0.9 speed), base 100: speed = int((100+20+0)*0.9) = 108
+        # user already faster at sp=0
+        timid = NatureRegistry.get_by_name("Timid")
+        brave = NatureRegistry.get_by_name("Brave")
+        user   = dataclasses.replace(make_pokemon(1, 80),  nature=timid)
+        target = dataclasses.replace(make_pokemon(2, 100), nature=brave)
+        result = svc.min_sp_to_outspeed(user, target)
+        assert result is not None
+        assert result.sp_needed == 0
+        assert result.my_speed == 110
+        assert result.target_speed == 108

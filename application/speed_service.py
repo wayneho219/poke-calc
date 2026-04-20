@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 from domain.models.nature import BattleStat
 from domain.models.pokemon import Pokemon
 from application.calculator import StatCalculator
@@ -16,7 +17,7 @@ class SpeedService:
     def __init__(self, calculator: StatCalculator) -> None:
         self._calc = calculator
 
-    def min_sp_to_outspeed(self, user: Pokemon, target: Pokemon) -> SpeedResult:
+    def min_sp_to_outspeed(self, user: Pokemon, target: Pokemon) -> Optional[SpeedResult]:
         target_speed = self._calc.calc_stat(
             target.base_stats.speed, 0, target.nature, BattleStat.SPEED
         )
@@ -26,4 +27,4 @@ class SpeedService:
             )
             if my_speed > target_speed:
                 return SpeedResult(sp_needed=sp, my_speed=my_speed, target_speed=target_speed)
-        return SpeedResult(sp_needed=-1, my_speed=-1, target_speed=target_speed)
+        return None

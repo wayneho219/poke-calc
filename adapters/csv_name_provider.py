@@ -17,7 +17,11 @@ class CsvNameProvider:
         self._records: list[NameRecord] = self._load(csv_path)
 
     def _load(self, path: Path) -> list[NameRecord]:
+        required = {"id", "name_en", "name_zh", "name_ja"}
         with path.open(encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            if not reader.fieldnames or not required.issubset(reader.fieldnames):
+                raise ValueError(f"CSV missing required columns. Expected: {required}")
             return [
                 NameRecord(
                     pokemon_id=int(row["id"]),
@@ -25,7 +29,7 @@ class CsvNameProvider:
                     name_zh=row["name_zh"],
                     name_ja=row["name_ja"],
                 )
-                for row in csv.DictReader(f)
+                for row in reader
             ]
 
     def fuzzy_match(self, query: str) -> list[int]:

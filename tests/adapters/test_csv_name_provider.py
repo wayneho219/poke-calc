@@ -43,3 +43,9 @@ class TestCsvNameProvider:
         # "班" appears only in Tyranitar zh name
         ids = provider.fuzzy_match("班")
         assert 248 in ids
+
+    def test_raises_on_missing_column(self, tmp_path):
+        bad_csv = tmp_path / "bad.csv"
+        bad_csv.write_text("id,name_en\n1,Bulbasaur\n", encoding="utf-8")
+        with pytest.raises(ValueError, match="missing required columns"):
+            CsvNameProvider(bad_csv)

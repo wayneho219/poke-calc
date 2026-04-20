@@ -37,17 +37,20 @@ class SurvivalService:
     def _def_stat(self, attack: AttackInput) -> BattleStat:
         return BattleStat.DEFENSE if attack.is_physical else BattleStat.SP_DEFENSE
 
+    def _def_base(self, pokemon: Pokemon, attack: AttackInput) -> int:
+        return pokemon.base_stats.defense if attack.is_physical else pokemon.base_stats.sp_defense
+
     def _min_sp_def_for_hp(self, pokemon: Pokemon, hp_final: int, attack: AttackInput) -> Optional[int]:
         stat = self._def_stat(attack)
         for sp_def in range(0, self.SP_MAX + 1):
-            def_final = self._calc.calc_stat(pokemon.base_stats.defense, sp_def, pokemon.nature, stat)
+            def_final = self._calc.calc_stat(self._def_base(pokemon, attack), sp_def, pokemon.nature, stat)
             if self._damage(attack, def_final) < hp_final:
                 return sp_def
         return None
 
-    def optimize(self, pokemon: Pokemon, attack: AttackInput) -> tuple:
+    def optimize(self, pokemon: Pokemon, attack: AttackInput) -> tuple[SurvivalResult, SurvivalResult]:
         best_total = self.SP_TOTAL_MAX + 1
-        candidates: list = []
+        candidates: list[SurvivalResult] = []
         stat = self._def_stat(attack)
 
         for sp_hp in range(0, self.SP_MAX + 1):
@@ -61,7 +64,7 @@ class SurvivalService:
             if total > best_total:
                 continue
 
-            def_final = self._calc.calc_stat(pokemon.base_stats.defense, sp_def, pokemon.nature, stat)
+            def_final = self._calc.calc_stat(self._def_base(pokemon, attack), sp_def, pokemon.nature, stat)
             result = SurvivalResult(sp_hp, sp_def, total, hp_final, def_final, True)
 
             if total < best_total:

@@ -72,3 +72,28 @@ class TestSurvivalService:
         prefer_hp, prefer_def = svc.optimize(mon, STRONG_ATTACK)
         assert prefer_hp.survived is True
         assert prefer_def.survived is True
+
+    def test_special_attack_uses_sp_defense_base(self):
+        # Pokemon with base_def=100 but base_sp_def=50
+        # Special attack: power=120, atk=300, type_mult=1.0
+        # damage = int(22*120*300/sp_def_final/50 + 2) = int(15840/sp_def_final + 2)
+        # At sp_def=0: sp_def_final = int((50+20)*1.0) = 70, damage = int(15840/70+2) = int(228.28) = 228 > 175 (HP at sp_hp=0)
+        # This test verifies that sp_defense base stat is used, not defense
+        from domain.models.stats import StatSet
+        from domain.models.pokemon import Pokemon as Poke
+        mon = Poke(
+            id=2, name_en="SpecTest", name_zh="測試", name_ja="テスト",
+            base_stats=StatSet(hp=100, attack=100, defense=100, sp_attack=100, sp_defense=50, speed=100),
+            types=["normal"],
+        )
+        special_attack = AttackInput(power=120, attacker_atk=300, is_physical=False, type_multiplier=1.0)
+        prefer_hp, prefer_def = svc.optimize(mon, special_attack)
+        # Both should survive
+        assert prefer_hp.survived is True
+        assert prefer_def.survived is True
+        # final_def should reflect sp_defense (base 50), not defense (base 100)
+        # sp_defense_final at sp_def=0: int((50+20+0)*1.0) = 70
+        # sp_defense_final at sp_def>0: int((50+20+sp_def)*1.0)
+        # Verify final_def is based on sp_defense (50), not defense (100)
+        # If bug existed, final_def would be ~120+ instead of ~70+
+        assert prefer_hp.final_def < 100  # Must be sp_defense-based, not defense-based

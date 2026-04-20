@@ -48,13 +48,28 @@ class TestCalcStat:
 
 class TestCalcAll:
     def test_returns_statset_type(self):
-        from domain.models.stats import StatSet
         result = calc.calc_all(make_garchomp(JOLLY), SPAllocation())
         assert isinstance(result, StatSet)
 
     def test_hp_matches_calc_hp(self):
         result = calc.calc_all(make_garchomp(), SPAllocation(hp=8))
         assert result.hp == calc.calc_hp(108, 8)
+
+    def test_attack_matches_calc_stat(self):
+        result = calc.calc_all(make_garchomp(NEUTRAL), SPAllocation(attack=4))
+        assert result.attack == calc.calc_stat(130, 4, NEUTRAL, BattleStat.ATTACK)
+
+    def test_defense_matches_calc_stat(self):
+        result = calc.calc_all(make_garchomp(NEUTRAL), SPAllocation(defense=4))
+        assert result.defense == calc.calc_stat(95, 4, NEUTRAL, BattleStat.DEFENSE)
+
+    def test_sp_attack_matches_calc_stat(self):
+        result = calc.calc_all(make_garchomp(JOLLY), SPAllocation(sp_attack=4))
+        assert result.sp_attack == calc.calc_stat(80, 4, JOLLY, BattleStat.SP_ATTACK)
+
+    def test_sp_defense_matches_calc_stat(self):
+        result = calc.calc_all(make_garchomp(NEUTRAL), SPAllocation(sp_defense=4))
+        assert result.sp_defense == calc.calc_stat(85, 4, NEUTRAL, BattleStat.SP_DEFENSE)
 
     def test_speed_matches_calc_stat(self):
         result = calc.calc_all(make_garchomp(JOLLY), SPAllocation(speed=4))

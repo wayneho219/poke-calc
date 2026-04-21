@@ -15,7 +15,11 @@ TOTAL = 1025  # Gen 1-9
 
 def fetch_names(species_id: int):
     url = f"{BASE}/pokemon-species/{species_id}"
-    resp = requests.get(url, timeout=10)
+    try:
+        resp = requests.get(url, timeout=10)
+    except requests.RequestException as e:
+        print(f"[{species_id}] Network error: {e}")
+        return None
     if resp.status_code == 404:
         return None
     resp.raise_for_status()
@@ -32,19 +36,24 @@ def fetch_names(species_id: int):
 def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     rows = []
-    for i in range(1, TOTAL + 1):
-        row = fetch_names(i)
-        if row:
-            rows.append(row)
-            print(f"[{i}/{TOTAL}] {row['name_en']} / {row['name_zh']} / {row['name_ja']}")
-        time.sleep(0.05)  # avoid rate limit
+    try:
+        for i in range(1, TOTAL + 1):
+            row = fetch_names(i)
+            if row:
+                rows.append(row)
+                print(f"[{i}/{TOTAL}] {row['name_en']} / {row['name_zh']} / {row['name_ja']}")
+            else:
+                print(f"[{i}/{TOTAL}] SKIPPED (404)")
+            time.sleep(0.05)  # avoid rate limit
+    except KeyboardInterrupt:
+        print("\nInterrupted — writing partial results…")
+    finally:
+        with OUT.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=["id", "name_en", "name_zh", "name_ja"])
+            writer.writeheader()
+            writer.writerows(rows)
 
-    with OUT.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["id", "name_en", "name_zh", "name_ja"])
-        writer.writeheader()
-        writer.writerows(rows)
-
-    print(f"\nDone. {len(rows)} records written to {OUT}")
+        print(f"\nDone. {len(rows)} records written to {OUT}")
 
 
 if __name__ == "__main__":

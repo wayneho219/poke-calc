@@ -24,7 +24,7 @@ def fetch_names(species_id: int):
     return {
         "id":      species_id,
         "name_en": names.get("en", ""),
-        "name_zh": names.get("zh-Hant", names.get("zh-Hans", "")),
+        "name_zh": names.get("zh-hant", names.get("zh-hans", "")),
         "name_ja": names.get("ja", names.get("ja-Hrkt", "")),
     }
 

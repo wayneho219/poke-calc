@@ -43,7 +43,7 @@ def main() -> None:
                 rows.append(row)
                 print(f"[{i}/{TOTAL}] {row['name_en']} / {row['name_zh']} / {row['name_ja']}")
             else:
-                print(f"[{i}/{TOTAL}] SKIPPED (404)")
+                print(f"[{i}/{TOTAL}] SKIPPED")
             time.sleep(0.05)  # avoid rate limit
     except KeyboardInterrupt:
         print("\nInterrupted — writing partial results…")

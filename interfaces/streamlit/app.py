@@ -5,7 +5,7 @@ from adapters.csv_name_provider import CsvNameProvider
 from application.calculator import StatCalculator
 from application.search_service import SearchService
 from application.speed_service import SpeedService
-from application.survival_service import SurvivalService
+from application.survival_service import AttackInput, SurvivalService
 from domain.models.nature import NatureRegistry
 from shared.config import CSV_PATH, CACHE_DIR
 
@@ -119,7 +119,79 @@ with tab_speed:
                 cols[1].metric(f"{my_mon.name_zh} 速度", result.my_speed)
                 cols[2].metric(f"{tgt_mon.name_zh} 速度", result.target_speed)
 
-# ── Survival Tab (placeholder UI) ────────────────────────────────────────────
+# ── Survival Tab ─────────────────────────────────────────────────────────────
 with tab_survival:
-    st.header("存活分析")
-    st.info("功能開發中，敬請期待。")
+    st.header("🛡️ 存活分析")
+    st.caption("找出能扛下特定攻擊的最小 SP_HP + SP_Def 總和，同時呈現偏HP與偏防禦兩種最優方案。")
+
+    col_mon, col_atk = st.columns(2)
+
+    with col_mon:
+        st.subheader("我方寶可夢")
+        surv_query = st.text_input("名稱", key="surv_mon", placeholder="Garchomp / 烈咬陸鯊")
+        surv_nature_name = st.selectbox(
+            "性格",
+            options=["Hardy", "Bold", "Impish", "Relaxed", "Lax", "其他..."],
+            key="surv_nature",
+        )
+        if surv_nature_name == "其他...":
+            surv_nature_name = st.text_input("輸入性格名稱（中/英/日）", key="surv_nature_input")
+
+    with col_atk:
+        st.subheader("攻擊參數")
+        power        = st.number_input("招式威力", min_value=1, max_value=250, value=120, key="surv_power")
+        attacker_atk = st.number_input("攻擊方實際攻擊力", min_value=1, max_value=999, value=200, key="surv_atk")
+        is_physical  = st.radio("攻擊類別", ["物理", "特殊"], key="surv_cat") == "物理"
+        type_mult    = st.select_slider(
+            "屬性相性",
+            options=[0.25, 0.5, 1.0, 2.0, 4.0],
+            value=1.0,
+            key="surv_mult",
+        )
+
+    if st.button("計算最佳存活分配", key="surv_calc") and surv_query:
+        try:
+            surv_nature = NatureRegistry.get_by_name(surv_nature_name)
+        except ValueError as e:
+            st.error(f"無法識別的性格：{e}")
+            st.stop()
+
+        with st.spinner("搜尋中..."):
+            surv_results = svc["search"].search(surv_query)
+
+        if not surv_results:
+            st.error(f"找不到寶可夢：{surv_query}")
+        else:
+            mon = dataclasses.replace(surv_results[0], nature=surv_nature)
+            attack = AttackInput(
+                power=int(power),
+                attacker_atk=int(attacker_atk),
+                is_physical=is_physical,
+                type_multiplier=float(type_mult),
+            )
+            prefer_hp, prefer_def = svc["survival"].optimize(mon, attack)
+
+            st.divider()
+
+            if not prefer_hp.survived:
+                st.error("❌ 在 SP 限制內無法扛下此攻擊，請調整攻擊參數。")
+            else:
+                st.success(f"✅ 最小 SP 總投入：**{prefer_hp.total_sp}** 點（SP_HP + SP_Def）")
+
+                col_a, col_b = st.columns(2)
+
+                with col_a:
+                    st.subheader("偏 HP 方案")
+                    st.metric("SP_HP", prefer_hp.sp_hp)
+                    st.metric("SP_Def", prefer_hp.sp_def)
+                    st.metric("最終 HP", prefer_hp.final_hp)
+                    st.metric("最終防禦", prefer_hp.final_def)
+                    st.caption(f"合計 SP 投入：{prefer_hp.total_sp}")
+
+                with col_b:
+                    st.subheader("偏防禦方案")
+                    st.metric("SP_HP", prefer_def.sp_hp)
+                    st.metric("SP_Def", prefer_def.sp_def)
+                    st.metric("最終 HP", prefer_def.final_hp)
+                    st.metric("最終防禦", prefer_def.final_def)
+                    st.caption(f"合計 SP 投入：{prefer_def.total_sp}")

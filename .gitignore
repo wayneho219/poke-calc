@@ -9,4 +9,3 @@ build/
 env/
 venv/
 adapters/cache/
-data/pokemon_names.csv

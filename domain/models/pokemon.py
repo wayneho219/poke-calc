@@ -11,7 +11,10 @@ class Pokemon:
     name_zh: str
     name_ja: str
     base_stats: StatSet
-    types: list[str]
+    types: tuple[str, ...]
     nature: Nature = field(default_factory=lambda: NatureRegistry.get_by_name("Hardy"))
     sprite_url: str = ""
     sprite_shiny_url: str = ""
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "types", tuple(self.types))

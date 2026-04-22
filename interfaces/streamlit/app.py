@@ -1,11 +1,10 @@
 import streamlit as st
-from pathlib import Path
 from adapters.poke_api_repository import PokeApiRepository
 from adapters.csv_name_provider import CsvNameProvider
 from application.calculator import StatCalculator
 from application.search_service import SearchService
 from application.speed_service import SpeedService
-from application.survival_service import SurvivalService, AttackInput
+from application.survival_service import SurvivalService
 from shared.config import CSV_PATH, CACHE_DIR
 
 st.set_page_config(page_title="Pokémon Champions 2026", layout="wide")
@@ -59,9 +58,9 @@ with tab_search:
 # ── Speed Tab (placeholder UI) ───────────────────────────────────────────────
 with tab_speed:
     st.header("超速分析")
-    st.info("請至下一個 Task 完成此頁籤的 UI。")
+    st.info("功能開發中，敬請期待。")
 
 # ── Survival Tab (placeholder UI) ────────────────────────────────────────────
 with tab_survival:
     st.header("存活分析")
-    st.info("請至下一個 Task 完成此頁籤的 UI。")
+    st.info("功能開發中，敬請期待。")

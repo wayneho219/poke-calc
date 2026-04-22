@@ -55,10 +55,62 @@ with tab_search:
                         "種族值": [b.hp, b.attack, b.defense, b.sp_attack, b.sp_defense, b.speed],
                     })
 
-# ── Speed Tab (placeholder UI) ───────────────────────────────────────────────
+# ── Speed Tab ────────────────────────────────────────────────────────────────
 with tab_speed:
-    st.header("超速分析")
-    st.info("功能開發中，敬請期待。")
+    st.header("⚡ 超速分析")
+    st.caption("計算超越目標對手（速度+1）所需的最小 SP_Speed 分配。目標寶可夢假設 SP_Speed = 0。")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("我方寶可夢")
+        my_query = st.text_input("名稱", key="speed_my", placeholder="Garchomp / 烈咬陸鯊")
+        my_nature_name = st.selectbox(
+            "性格",
+            options=["Hardy", "Timid", "Jolly", "Hasty", "Naive",
+                     "Brave", "Relaxed", "Quiet", "Sassy", "其他..."],
+            key="speed_my_nature",
+        )
+        if my_nature_name == "其他...":
+            my_nature_name = st.text_input("輸入性格名稱（中/英/日）", key="speed_my_nature_input")
+
+    with col2:
+        st.subheader("目標寶可夢")
+        tgt_query = st.text_input("名稱", key="speed_tgt", placeholder="Kyogre / 蓋歐卡")
+        tgt_nature_name = st.selectbox(
+            "性格",
+            options=["Hardy", "Timid", "Jolly", "Hasty", "Naive",
+                     "Brave", "Relaxed", "Quiet", "Sassy", "其他..."],
+            key="speed_tgt_nature",
+        )
+        if tgt_nature_name == "其他...":
+            tgt_nature_name = st.text_input("輸入性格名稱（中/英/日）", key="speed_tgt_nature_input")
+
+    if st.button("計算超速 SP", key="speed_calc") and my_query and tgt_query:
+        from domain.models.nature import NatureRegistry
+
+        my_results  = svc["search"].search(my_query)
+        tgt_results = svc["search"].search(tgt_query)
+
+        if not my_results:
+            st.error(f"找不到我方寶可夢：{my_query}")
+        elif not tgt_results:
+            st.error(f"找不到目標寶可夢：{tgt_query}")
+        else:
+            import dataclasses
+            my_mon  = dataclasses.replace(my_results[0],  nature=NatureRegistry.get_by_name(my_nature_name))
+            tgt_mon = dataclasses.replace(tgt_results[0], nature=NatureRegistry.get_by_name(tgt_nature_name))
+            result  = svc["speed"].min_sp_to_outspeed(my_mon, tgt_mon)
+
+            st.divider()
+            if result.sp_needed == -1:
+                st.error(f"❌ 即使投入所有 SP，{my_mon.name_zh} 仍無法超越 {tgt_mon.name_zh}（速度差距過大）。")
+            else:
+                st.success(f"✅ 需要 **SP_Speed = {result.sp_needed}** 點")
+                cols = st.columns(3)
+                cols[0].metric("所需 SP", result.sp_needed)
+                cols[1].metric(f"{my_mon.name_zh} 速度", result.my_speed)
+                cols[2].metric(f"{tgt_mon.name_zh} 速度", result.target_speed)
 
 # ── Survival Tab (placeholder UI) ────────────────────────────────────────────
 with tab_survival:

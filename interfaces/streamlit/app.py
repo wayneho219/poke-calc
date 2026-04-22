@@ -8,8 +8,36 @@ from application.speed_service import SpeedService
 from application.survival_service import AttackInput, SurvivalService
 from domain.models.nature import NatureRegistry
 from shared.config import CSV_PATH, CACHE_DIR
+from shared.i18n.translator import Translator, parse_accept_language
 
-st.set_page_config(page_title="Pokémon Champions 2026", layout="wide")
+
+def detect_lang() -> str:
+    if "lang" in st.query_params:
+        candidate = st.query_params["lang"]
+        if candidate in ("zh", "en", "ja"):
+            return candidate
+    try:
+        header = st.context.headers.get("Accept-Language", "")
+        return parse_accept_language(header)
+    except AttributeError:
+        return "zh"
+
+
+lang = detect_lang()
+t = Translator(lang)
+
+st.set_page_config(page_title=t("page_title"), layout="wide")
+
+with st.sidebar:
+    chosen = st.selectbox(
+        "🌐 Language",
+        options=["zh", "en", "ja"],
+        format_func=lambda l: {"zh": "繁體中文", "en": "English", "ja": "日本語"}[l],
+        index=["zh", "en", "ja"].index(lang),
+    )
+    if chosen != lang:
+        st.query_params["lang"] = chosen
+        st.rerun()
 
 
 @st.cache_resource
@@ -27,21 +55,21 @@ def build_services() -> dict:
 
 svc = build_services()
 
-st.title("Pokémon Champions 2026 — 競技策略工具箱")
+st.title(t("page_title"))
 
-tab_search, tab_speed, tab_survival = st.tabs(["🔍 寶可夢查詢", "⚡ 超速分析", "🛡️ 存活分析"])
+tab_search, tab_speed, tab_survival = st.tabs([t("tab_search"), t("tab_speed"), t("tab_survival")])
 
 # ── Search Tab ──────────────────────────────────────────────────────────────
 with tab_search:
-    st.header("🔍 寶可夢查詢")
-    query = st.text_input("輸入名稱（繁中 / English / 日本語）", placeholder="烈咬陸鯊 / Garchomp / ガブリアス")
+    st.header(t("search_header"))
+    query = st.text_input(t("search_input_label"), placeholder=t("search_placeholder"))
 
     if query:
-        with st.spinner("搜尋中..."):
+        with st.spinner(t("search_spinner")):
             results = svc["search"].search(query)
 
         if not results:
-            st.warning("找不到符合的寶可夢，請確認名稱是否正確。")
+            st.warning(t("search_not_found"))
         else:
             for p in results:
                 col_img, col_info = st.columns([1, 3])
@@ -50,60 +78,60 @@ with tab_search:
                         st.image(p.sprite_url, width=160)
                 with col_info:
                     st.subheader(f"{p.name_zh}　{p.name_en.title()}　{p.name_ja}")
-                    st.caption("屬性：" + " / ".join(p.types))
+                    st.caption(t("search_types_label") + " / ".join(t.type_name(tp) for tp in p.types))
                     b = p.base_stats
                     st.table({
-                        "能力": ["HP", "攻擊", "防禦", "特攻", "特防", "速度"],
-                        "種族值": [b.hp, b.attack, b.defense, b.sp_attack, b.sp_defense, b.speed],
+                        t("stat_col_name"): t.strings("stat_names"),
+                        t("stat_col_value"): [b.hp, b.attack, b.defense, b.sp_attack, b.sp_defense, b.speed],
                     })
 
 # ── Speed Tab ────────────────────────────────────────────────────────────────
 with tab_speed:
-    st.header("⚡ 超速分析")
-    st.caption("計算超越目標對手（速度+1）所需的最小 SP_Speed 分配。目標寶可夢假設 SP_Speed = 0。")
+    st.header(t("speed_header"))
+    st.caption(t("speed_caption"))
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("我方寶可夢")
-        my_query = st.text_input("名稱", key="speed_my", placeholder="Garchomp / 烈咬陸鯊")
+        st.subheader(t("speed_my_mon"))
+        my_query = st.text_input(t("speed_name_label"), key="speed_my", placeholder="Garchomp / 烈咬陸鯊")
         my_nature_name = st.selectbox(
-            "性格",
+            t("speed_nature_label"),
             options=["Hardy", "Timid", "Jolly", "Hasty", "Naive",
-                     "Brave", "Relaxed", "Quiet", "Sassy", "其他..."],
+                     "Brave", "Relaxed", "Quiet", "Sassy", t("speed_nature_other")],
             key="speed_my_nature",
         )
-        if my_nature_name == "其他...":
-            my_nature_name = st.text_input("輸入性格名稱（中/英/日）", key="speed_my_nature_input")
+        if my_nature_name == t("speed_nature_other"):
+            my_nature_name = st.text_input(t("speed_nature_input"), key="speed_my_nature_input")
 
     with col2:
-        st.subheader("目標寶可夢")
-        tgt_query = st.text_input("名稱", key="speed_tgt", placeholder="Kyogre / 蓋歐卡")
+        st.subheader(t("speed_tgt_mon"))
+        tgt_query = st.text_input(t("speed_name_label"), key="speed_tgt", placeholder="Kyogre / 蓋歐卡")
         tgt_nature_name = st.selectbox(
-            "性格",
+            t("speed_nature_label"),
             options=["Hardy", "Timid", "Jolly", "Hasty", "Naive",
-                     "Brave", "Relaxed", "Quiet", "Sassy", "其他..."],
+                     "Brave", "Relaxed", "Quiet", "Sassy", t("speed_nature_other")],
             key="speed_tgt_nature",
         )
-        if tgt_nature_name == "其他...":
-            tgt_nature_name = st.text_input("輸入性格名稱（中/英/日）", key="speed_tgt_nature_input")
+        if tgt_nature_name == t("speed_nature_other"):
+            tgt_nature_name = st.text_input(t("speed_nature_input"), key="speed_tgt_nature_input")
 
-    if st.button("計算超速 SP", key="speed_calc") and my_query and tgt_query:
+    if st.button(t("speed_button"), key="speed_calc") and my_query and tgt_query:
         try:
             my_nature  = NatureRegistry.get_by_name(my_nature_name)
             tgt_nature = NatureRegistry.get_by_name(tgt_nature_name)
         except ValueError as e:
-            st.error(f"無法識別的性格：{e}")
+            st.error(t("nature_invalid").format(error=e))
             st.stop()
 
-        with st.spinner("搜尋中..."):
+        with st.spinner(t("speed_spinner")):
             my_results  = svc["search"].search(my_query)
             tgt_results = svc["search"].search(tgt_query)
 
         if not my_results:
-            st.error(f"找不到我方寶可夢：{my_query}")
+            st.error(t("speed_my_not_found").format(name=my_query))
         elif not tgt_results:
-            st.error(f"找不到目標寶可夢：{tgt_query}")
+            st.error(t("speed_tgt_not_found").format(name=tgt_query))
         else:
             my_mon  = dataclasses.replace(my_results[0],  nature=my_nature)
             tgt_mon = dataclasses.replace(tgt_results[0], nature=tgt_nature)
@@ -111,56 +139,56 @@ with tab_speed:
 
             st.divider()
             if result is None:
-                st.error(f"❌ 即使投入所有 SP，{my_mon.name_zh} 仍無法超越 {tgt_mon.name_zh}（速度差距過大）。")
+                st.error(t("speed_cannot_outspeed").format(my=my_mon.name_zh, tgt=tgt_mon.name_zh))
             else:
-                st.success(f"✅ 需要 **SP_Speed = {result.sp_needed}** 點")
+                st.success(t("speed_success").format(sp=result.sp_needed))
                 cols = st.columns(3)
-                cols[0].metric("所需 SP", result.sp_needed)
-                cols[1].metric(f"{my_mon.name_zh} 速度", result.my_speed)
-                cols[2].metric(f"{tgt_mon.name_zh} 速度", result.target_speed)
+                cols[0].metric(t("speed_metric_sp"), result.sp_needed)
+                cols[1].metric(t("speed_metric_speed").format(name=my_mon.name_zh), result.my_speed)
+                cols[2].metric(t("speed_metric_speed").format(name=tgt_mon.name_zh), result.target_speed)
 
 # ── Survival Tab ─────────────────────────────────────────────────────────────
 with tab_survival:
-    st.header("🛡️ 存活分析")
-    st.caption("找出能扛下特定攻擊的最小 SP_HP + SP_Def 總和，同時呈現偏HP與偏防禦兩種最優方案。")
+    st.header(t("surv_header"))
+    st.caption(t("surv_caption"))
 
     col_mon, col_atk = st.columns(2)
 
     with col_mon:
-        st.subheader("我方寶可夢")
-        surv_query = st.text_input("名稱", key="surv_mon", placeholder="Garchomp / 烈咬陸鯊")
+        st.subheader(t("surv_my_mon"))
+        surv_query = st.text_input(t("surv_name_label"), key="surv_mon", placeholder="Garchomp / 烈咬陸鯊")
         surv_nature_name = st.selectbox(
-            "性格",
-            options=["Hardy", "Bold", "Impish", "Relaxed", "Lax", "其他..."],
+            t("surv_nature_label"),
+            options=["Hardy", "Bold", "Impish", "Relaxed", "Lax", t("surv_nature_other")],
             key="surv_nature",
         )
-        if surv_nature_name == "其他...":
-            surv_nature_name = st.text_input("輸入性格名稱（中/英/日）", key="surv_nature_input")
+        if surv_nature_name == t("surv_nature_other"):
+            surv_nature_name = st.text_input(t("surv_nature_input"), key="surv_nature_input")
 
     with col_atk:
-        st.subheader("攻擊參數")
-        power        = st.number_input("招式威力", min_value=1, max_value=250, value=120, key="surv_power")
-        attacker_atk = st.number_input("攻擊方實際攻擊力", min_value=1, max_value=999, value=200, key="surv_atk")
-        is_physical  = st.radio("攻擊類別", ["物理", "特殊"], key="surv_cat") == "物理"
+        st.subheader(t("surv_atk_params"))
+        power        = st.number_input(t("surv_power_label"), min_value=1, max_value=250, value=120, key="surv_power")
+        attacker_atk = st.number_input(t("surv_atk_label"), min_value=1, max_value=999, value=200, key="surv_atk")
+        is_physical  = st.radio(t("surv_cat_label"), [t("surv_cat_physical"), t("surv_cat_special")], key="surv_cat") == t("surv_cat_physical")
         type_mult    = st.select_slider(
-            "屬性相性",
+            t("surv_mult_label"),
             options=[0.25, 0.5, 1.0, 2.0, 4.0],
             value=1.0,
             key="surv_mult",
         )
 
-    if st.button("計算最佳存活分配", key="surv_calc") and surv_query:
+    if st.button(t("surv_button"), key="surv_calc") and surv_query:
         try:
             surv_nature = NatureRegistry.get_by_name(surv_nature_name)
         except ValueError as e:
-            st.error(f"無法識別的性格：{e}")
+            st.error(t("nature_invalid").format(error=e))
             st.stop()
 
-        with st.spinner("搜尋中..."):
+        with st.spinner(t("surv_spinner")):
             surv_results = svc["search"].search(surv_query)
 
         if not surv_results:
-            st.error(f"找不到寶可夢：{surv_query}")
+            st.error(t("surv_not_found").format(name=surv_query))
         else:
             mon = dataclasses.replace(surv_results[0], nature=surv_nature)
             attack = AttackInput(
@@ -176,24 +204,24 @@ with tab_survival:
             # optimize() returns survived=False for both results when impossible;
             # both flags are identical by service contract.
             if not prefer_hp.survived:
-                st.error("❌ 在 SP 限制內無法扛下此攻擊，請調整攻擊參數。")
+                st.error(t("surv_impossible"))
             else:
-                st.success(f"✅ 最小 SP 總投入：**{prefer_hp.total_sp}** 點（SP_HP + SP_Def）")
+                st.success(t("surv_success").format(sp=prefer_hp.total_sp))
 
                 col_a, col_b = st.columns(2)
 
                 with col_a:
-                    st.subheader("偏 HP 方案")
-                    st.metric("SP_HP", prefer_hp.sp_hp)
-                    st.metric("SP_Def", prefer_hp.sp_def)
-                    st.metric("最終 HP", prefer_hp.final_hp)
-                    st.metric("最終防禦", prefer_hp.final_def)
-                    st.caption(f"合計 SP 投入：{prefer_hp.total_sp}")
+                    st.subheader(t("surv_plan_hp"))
+                    st.metric(t("surv_metric_sp_hp"), prefer_hp.sp_hp)
+                    st.metric(t("surv_metric_sp_def"), prefer_hp.sp_def)
+                    st.metric(t("surv_metric_final_hp"), prefer_hp.final_hp)
+                    st.metric(t("surv_metric_final_def"), prefer_hp.final_def)
+                    st.caption(t("surv_metric_total").format(sp=prefer_hp.total_sp))
 
                 with col_b:
-                    st.subheader("偏防禦方案")
-                    st.metric("SP_HP", prefer_def.sp_hp)
-                    st.metric("SP_Def", prefer_def.sp_def)
-                    st.metric("最終 HP", prefer_def.final_hp)
-                    st.metric("最終防禦", prefer_def.final_def)
-                    st.caption(f"合計 SP 投入：{prefer_def.total_sp}")
+                    st.subheader(t("surv_plan_def"))
+                    st.metric(t("surv_metric_sp_hp"), prefer_def.sp_hp)
+                    st.metric(t("surv_metric_sp_def"), prefer_def.sp_def)
+                    st.metric(t("surv_metric_final_hp"), prefer_def.final_hp)
+                    st.metric(t("surv_metric_final_def"), prefer_def.final_def)
+                    st.caption(t("surv_metric_total").format(sp=prefer_def.total_sp))

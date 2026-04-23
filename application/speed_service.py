@@ -17,9 +17,14 @@ class SpeedService:
     def __init__(self, calculator: StatCalculator) -> None:
         self._calc = calculator
 
-    def min_sp_to_outspeed(self, user: Pokemon, target: Pokemon) -> Optional[SpeedResult]:
+    def min_sp_to_outspeed(
+        self,
+        user: Pokemon,
+        target: Pokemon,
+        target_sp: int = 0,
+    ) -> Optional[SpeedResult]:
         target_speed = self._calc.calc_stat(
-            target.base_stats.speed, 0, target.nature, BattleStat.SPEED
+            target.base_stats.speed, target_sp, target.nature, BattleStat.SPEED
         )
         for sp in range(0, 33):
             my_speed = self._calc.calc_stat(

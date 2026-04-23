@@ -68,3 +68,35 @@ class TestSpeedService:
         assert result.sp_needed == 0
         assert result.my_speed == 110
         assert result.target_speed == 108
+
+
+class TestSpeedServiceTargetSP:
+    def test_target_sp_raises_target_speed(self):
+        # target base 80, sp=4: speed = int((80+20+4)*1.0) = 104
+        # user base 100, sp=0: speed = 120 > 104, no SP needed
+        user   = make_pokemon(1, 100)
+        target = make_pokemon(2, 80)
+        result = svc.min_sp_to_outspeed(user, target, target_sp=4)
+        assert result is not None
+        assert result.sp_needed == 0
+        assert result.target_speed == 104
+
+    def test_target_sp_forces_user_to_invest(self):
+        # user base 80 sp=0: speed = int((80+20)*1.0) = 100
+        # target base 80 sp=4: speed = int((80+20+4)*1.0) = 104
+        # need 100+sp > 104 → sp=5, my_speed=105
+        user   = make_pokemon(1, 80)
+        target = make_pokemon(2, 80)
+        result = svc.min_sp_to_outspeed(user, target, target_sp=4)
+        assert result is not None
+        assert result.sp_needed == 5
+        assert result.my_speed == 105
+        assert result.target_speed == 104
+
+    def test_target_sp_max_still_cannot_outspeed(self):
+        # user base 60 max speed = int((60+20+32)*1.0) = 112
+        # target base 100 sp=32 speed = int((100+20+32)*1.0) = 152 → None
+        user   = make_pokemon(1, 60)
+        target = make_pokemon(2, 100)
+        result = svc.min_sp_to_outspeed(user, target, target_sp=32)
+        assert result is None

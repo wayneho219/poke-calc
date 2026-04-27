@@ -15,6 +15,10 @@ class Pokemon:
     nature: Nature = field(default_factory=lambda: NatureRegistry.get_by_name("Hardy"))
     sprite_url: str = ""
     sprite_shiny_url: str = ""
+    is_final_evolution: bool = False
+    abilities: list = field(default_factory=list)
+    dream_ability: dict | None = None
+    mega_forms: list = field(default_factory=list)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "types", tuple(self.types))

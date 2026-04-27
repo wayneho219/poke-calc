@@ -1,13 +1,11 @@
 import dataclasses
 import streamlit as st
-from adapters.poke_api_repository import PokeApiRepository
-from adapters.csv_name_provider import CsvNameProvider
+from adapters.local_json_repository import LocalJsonRepository
 from application.calculator import StatCalculator
-from application.search_service import SearchService
 from application.speed_service import SpeedService
 from application.survival_service import AttackInput, SurvivalService
-from domain.models.nature import NatureRegistry
-from shared.config import CSV_PATH, CACHE_DIR
+from domain.models.nature import NatureRegistry, BattleStat
+from shared.config import DATA_JSON_PATH, SPRITES_DIR
 from shared.i18n.translator import Translator, parse_accept_language
 
 
@@ -42,18 +40,22 @@ with st.sidebar:
 
 @st.cache_resource
 def build_services() -> dict:
-    repo  = PokeApiRepository(CACHE_DIR)
-    csv   = CsvNameProvider(CSV_PATH)
     calc  = StatCalculator()
+    local = LocalJsonRepository(DATA_JSON_PATH) if DATA_JSON_PATH.exists() else None
     return {
-        "repo":     repo,
-        "search":   SearchService(repo, csv),
+        "calc":     calc,
+        "local":    local,
         "speed":    SpeedService(calc),
         "survival": SurvivalService(calc),
     }
 
 
 svc = build_services()
+
+if svc["local"] is None:
+    st.warning(t("data_missing_warning"))
+    st.code("python3 scripts/build_data.py")
+    st.stop()
 
 st.title(t("page_title"))
 
@@ -62,26 +64,72 @@ tab_search, tab_speed, tab_survival = st.tabs([t("tab_search"), t("tab_speed"), 
 # ── Search Tab ──────────────────────────────────────────────────────────────
 with tab_search:
     st.header(t("search_header"))
-    query = st.text_input(t("search_input_label"), placeholder=t("search_placeholder"))
+    query = st.text_input(
+        t("search_input_label"),
+        placeholder=t("search_placeholder"),
+        key="search_query",
+    )
 
     if query:
-        with st.spinner(t("search_spinner")):
-            results = svc["search"].search(query)
+        results = svc["local"].fuzzy_match(query)
 
         if not results:
             st.warning(t("search_not_found"))
         else:
-            for p in results:
+            total = len(results)
+
+            # Reset page and selection when query changes
+            if st.session_state.get("_search_last_query") != query:
+                st.session_state["_search_page"] = 0
+                st.session_state["_search_last_query"] = query
+                st.session_state.pop("_selected_id", None)
+
+            PAGE_SIZE = 8
+            page  = st.session_state.get("_search_page", 0)
+            start = page * PAGE_SIZE
+            end   = min(start + PAGE_SIZE, total)
+
+            # Card grid: 4 columns × 2 rows
+            for row_start in range(0, end - start, 4):
+                cols = st.columns(4)
+                for i, p in enumerate(results[start + row_start: start + row_start + 4]):
+                    with cols[i]:
+                        sprite = SPRITES_DIR / f"{p.id}.png"
+                        if sprite.exists():
+                            st.image(str(sprite), width=80)
+                        name = {"zh": p.name_zh, "en": p.name_en.title(), "ja": p.name_ja}[lang]
+                        if st.button(name, key=f"card_{p.id}", use_container_width=True):
+                            st.session_state["_selected_id"] = p.id
+
+            # Pagination controls
+            nav_l, nav_m, nav_r = st.columns([1, 2, 1])
+            if page > 0:
+                if nav_l.button(t("search_prev"), key="pg_prev"):
+                    st.session_state["_search_page"] = page - 1
+                    st.rerun()
+            nav_m.caption(
+                t("search_results_count").format(start=start + 1, end=end, total=total)
+            )
+            if end < total:
+                if nav_r.button(t("search_next"), key="pg_next"):
+                    st.session_state["_search_page"] = page + 1
+                    st.rerun()
+
+            # Detail view — shown below cards when a card has been clicked
+            if "_selected_id" in st.session_state:
+                p = svc["local"].get_by_id(st.session_state["_selected_id"])
+                st.divider()
                 col_img, col_info = st.columns([1, 3])
                 with col_img:
-                    if p.sprite_url:
-                        st.image(p.sprite_url, width=160)
+                    sprite = SPRITES_DIR / f"{p.id}.png"
+                    if sprite.exists():
+                        st.image(str(sprite), width=160)
                 with col_info:
                     st.subheader(f"{p.name_zh}　{p.name_en.title()}　{p.name_ja}")
                     st.caption(t("search_types_label") + " / ".join(t.type_name(tp) for tp in p.types))
                     b = p.base_stats
                     st.table({
-                        t("stat_col_name"): t.strings("stat_names"),
+                        t("stat_col_name"):  t.strings("stat_names"),
                         t("stat_col_value"): [b.hp, b.attack, b.defense, b.sp_attack, b.sp_defense, b.speed],
                     })
 
@@ -124,9 +172,8 @@ with tab_speed:
             st.error(t("nature_invalid").format(error=e))
             st.stop()
 
-        with st.spinner(t("speed_spinner")):
-            my_results  = svc["search"].search(my_query)
-            tgt_results = svc["search"].search(tgt_query)
+        my_results  = svc["local"].fuzzy_match(my_query)
+        tgt_results = svc["local"].fuzzy_match(tgt_query)
 
         if not my_results:
             st.error(t("speed_my_not_found").format(name=my_query))
@@ -184,8 +231,7 @@ with tab_survival:
             st.error(t("nature_invalid").format(error=e))
             st.stop()
 
-        with st.spinner(t("surv_spinner")):
-            surv_results = svc["search"].search(surv_query)
+        surv_results = svc["local"].fuzzy_match(surv_query)
 
         if not surv_results:
             st.error(t("surv_not_found").format(name=surv_query))

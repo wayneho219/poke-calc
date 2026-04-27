@@ -19,6 +19,10 @@ def _parse(raw: dict) -> Pokemon:
             sp_attack=s["sp_attack"], sp_defense=s["sp_defense"], speed=s["speed"],
         ),
         sprite_url=raw.get("sprite_path", ""),
+        is_final_evolution=raw.get("is_final_evolution", False),
+        abilities=raw.get("abilities", []),
+        dream_ability=raw.get("dream_ability", None),
+        mega_forms=raw.get("mega_forms", []),
     )
 
 
@@ -62,7 +66,8 @@ class LocalJsonRepository(AbstractPokeRepository):
         if not q:
             return []
         ql = q.lower()
-        return [
+        matches = [
             p for p in self._all
             if ql in p.name_en.lower() or q in p.name_zh or q in p.name_ja
         ]
+        return sorted(matches, key=lambda p: (not p.is_final_evolution, p.id))

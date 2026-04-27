@@ -73,5 +73,17 @@
     "flying": "Flying", "psychic": "Psychic", "bug": "Bug",
     "rock": "Rock", "ghost": "Ghost", "dragon": "Dragon",
     "dark": "Dark", "steel": "Steel", "fairy": "Fairy"
-  }
+  },
+  "detail_abilities": "Abilities",
+  "detail_dream_ability_prefix": "Hidden: ",
+  "detail_type_matchup": "Type Matchup",
+  "detail_weaknesses": "Weaknesses",
+  "detail_resistances": "Resistances",
+  "detail_immunities": "Immunities",
+  "detail_mega": "Mega Evolution",
+  "detail_ability_hint": "Click an ability name to see its description",
+  "selector_placeholder": "Type to search...",
+  "selector_clear": "Clear selection",
+  "nature_grid_header": "Nature (select a cell)",
+  "nature_grid_clear": "Clear nature"
 }

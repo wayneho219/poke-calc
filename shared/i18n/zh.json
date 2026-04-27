@@ -73,5 +73,17 @@
     "flying": "飛行", "psychic": "超能力", "bug": "蟲",
     "rock": "岩石", "ghost": "幽靈", "dragon": "龍",
     "dark": "惡", "steel": "鋼", "fairy": "妖精"
-  }
+  },
+  "detail_abilities": "特性",
+  "detail_dream_ability_prefix": "夢：",
+  "detail_type_matchup": "屬性相性",
+  "detail_weaknesses": "弱點",
+  "detail_resistances": "抵抗",
+  "detail_immunities": "免疫",
+  "detail_mega": "Mega 進化",
+  "detail_ability_hint": "點擊特性名稱查看說明",
+  "selector_placeholder": "輸入名稱搜尋...",
+  "selector_clear": "清除選擇",
+  "nature_grid_header": "性格（點選格子）",
+  "nature_grid_clear": "清除性格"
 }

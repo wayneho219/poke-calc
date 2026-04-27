@@ -73,5 +73,17 @@
     "flying": "ひこう", "psychic": "エスパー", "bug": "むし",
     "rock": "いわ", "ghost": "ゴースト", "dragon": "ドラゴン",
     "dark": "あく", "steel": "はがね", "fairy": "フェアリー"
-  }
+  },
+  "detail_abilities": "特性",
+  "detail_dream_ability_prefix": "夢：",
+  "detail_type_matchup": "タイプ相性",
+  "detail_weaknesses": "弱点",
+  "detail_resistances": "耐性",
+  "detail_immunities": "無効",
+  "detail_mega": "メガシンカ",
+  "detail_ability_hint": "特性名をクリックして説明を表示",
+  "selector_placeholder": "名前を入力して検索...",
+  "selector_clear": "選択解除",
+  "nature_grid_header": "せいかく（セルを選択）",
+  "nature_grid_clear": "せいかく解除"
 }

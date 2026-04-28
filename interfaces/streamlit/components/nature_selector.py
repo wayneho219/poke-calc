@@ -67,7 +67,7 @@ def nature_selector(key: str, lang: str, translator) -> str | None:
                         nat_name,
                         key=f"_nat_{key}_{row}_{col}",
                         disabled=True,
-                        use_container_width=True,
+                        width="stretch",
                     )
                 else:
                     btn_type = "primary" if is_selected else "secondary"
@@ -75,7 +75,7 @@ def nature_selector(key: str, lang: str, translator) -> str | None:
                         nat_name,
                         key=f"_nat_{key}_{row}_{col}",
                         type=btn_type,
-                        use_container_width=True,
+                        width="stretch",
                         help=f"+{stat_labels[row]} / -{stat_labels[col]}",
                     ):
                         if is_selected:

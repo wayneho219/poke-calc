@@ -72,7 +72,7 @@ def pokemon_selector(
                 if sprite.exists():
                     st.image(str(sprite), width=40)
             with col_name:
-                if st.button(name, key=f"_ps_btn_{key}_{p.id}", use_container_width=True):
+                if st.button(name, key=f"_ps_btn_{key}_{p.id}", width="stretch"):
                     st.session_state[selected_key] = p.id
                     st.session_state[version_key] = version + 1
                     st.rerun()

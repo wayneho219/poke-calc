@@ -1,0 +1,49 @@
+[
+  {
+    "id": 25,
+    "name_en": "pikachu",
+    "name_zh": "皮卡丘",
+    "name_ja": "ピカチュウ",
+    "types": ["electric"],
+    "base_stats": {"hp": 35, "attack": 55, "defense": 40, "sp_attack": 50, "sp_defense": 50, "speed": 90},
+    "sprite_path": "data/sprites/25.png",
+    "is_final_evolution": false,
+    "abilities": [
+      {"name_zh": "靜電", "name_en": "Static", "name_ja": "せいでんき",
+       "desc_zh": "接觸到對手時，有30%的機率令其麻痺。", "desc_en": "Contact with the Pokémon may cause paralysis.", "desc_ja": "触れた相手をまひさせることがある。"}
+    ],
+    "dream_ability": {"name_zh": "避雷針", "name_en": "Lightning Rod", "name_ja": "ひらいしん",
+      "desc_zh": "把電屬性招式引向自己，不承受傷害，提升特攻。", "desc_en": "Draws in all Electric-type moves to boost Sp. Atk.", "desc_ja": "でんきタイプの技を引きつけ、とくこうを上げる。"},
+    "mega_forms": []
+  },
+  {
+    "id": 445,
+    "name_en": "garchomp",
+    "name_zh": "烈咬陸鯊",
+    "name_ja": "ガブリアス",
+    "types": ["dragon", "ground"],
+    "base_stats": {"hp": 108, "attack": 130, "defense": 95, "sp_attack": 80, "sp_defense": 85, "speed": 102},
+    "sprite_path": "data/sprites/445.png",
+    "is_final_evolution": true,
+    "abilities": [
+      {"name_zh": "鯊魚皮", "name_en": "Sand Veil", "name_ja": "すながくれ",
+       "desc_zh": "沙暴天氣時閃躲率提升20%。", "desc_en": "Boosts evasion in a sandstorm.", "desc_ja": "すなあらしのとき、回避率が上がる。"},
+      {"name_zh": "粗皮", "name_en": "Rough Skin", "name_ja": "ざらざら",
+       "desc_zh": "接觸到對手時，對手損失其最大HP的1/8。", "desc_en": "Inflicts damage on the attacker upon contact.", "desc_ja": "触れた相手のHPを少し削る。"}
+    ],
+    "dream_ability": null,
+    "mega_forms": [
+      {
+        "suffix": "mega",
+        "name_zh": "Mega 烈咬陸鯊",
+        "name_en": "Mega Garchomp",
+        "name_ja": "メガガブリアス",
+        "types": ["dragon", "ground"],
+        "base_stats": {"hp": 108, "attack": 170, "defense": 115, "sp_attack": 120, "sp_defense": 95, "speed": 92},
+        "ability": {"name_zh": "沙之力", "name_en": "Sand Force", "name_ja": "すなのちから",
+          "desc_zh": "沙暴天氣下，岩石、鋼、地面屬性技能威力提升1.3倍。", "desc_en": "Boosts Rock, Steel and Ground moves in a sandstorm.", "desc_ja": "すなあらしのとき、いわ・はがね・じめんタイプの技の威力が上がる。"},
+        "sprite_path": ""
+      }
+    ]
+  }
+]

@@ -27,32 +27,6 @@ t = Translator(lang)
 
 st.set_page_config(page_title=t("page_title"), layout="wide")
 
-with st.sidebar:
-    chosen = st.selectbox(
-        "🌐 Language",
-        options=["zh", "en", "ja"],
-        format_func=lambda l: {"zh": "繁體中文", "en": "English", "ja": "日本語"}[l],
-        index=["zh", "en", "ja"].index(lang),
-    )
-    if chosen != lang:
-        st.query_params["lang"] = chosen
-        st.rerun()
-
-    st.divider()
-    if st.button("🔄 " + t("data_update_button"), key="update_db"):
-        from scripts.build_data import build as _build
-        progress = st.progress(0.0, text=t("data_update_running_info"))
-
-        def _on_progress(current: int, total: int, name: str) -> None:
-            progress.progress(current / total, text=f"[{current}/{total}] {name}")
-
-        count = _build(on_progress=_on_progress)
-        progress.empty()
-        st.success(t("data_update_done").format(count=count))
-        build_services.clear()
-        st.rerun()
-
-
 @st.cache_resource
 def build_services() -> dict:
     calc  = StatCalculator()
@@ -72,7 +46,41 @@ if svc["local"] is None:
     st.code("python3 scripts/build_data.py")
     st.stop()
 
-st.title(t("page_title"))
+_hdr_main, _hdr_gear = st.columns([10, 1])
+_hdr_main.title(t("page_title"))
+
+with _hdr_gear.popover("⚙️", use_container_width=False):
+    chosen = st.selectbox(
+        "🌐 " + t("speed_modifier_label"),
+        options=["zh", "en", "ja"],
+        format_func=lambda l: {"zh": "繁體中文", "en": "English", "ja": "日本語"}[l],
+        index=["zh", "en", "ja"].index(lang),
+        key="_lang_select",
+    )
+    if chosen != lang:
+        st.query_params["lang"] = chosen
+        st.rerun()
+
+    st.divider()
+    if st.button("🔄 " + t("data_update_button"), key="update_db"):
+        st.session_state["_run_update"] = True
+        st.rerun()
+
+_update_placeholder = st.empty()
+if st.session_state.get("_run_update"):
+    st.session_state["_run_update"] = False
+    with _update_placeholder.container():
+        from scripts.build_data import build as _build
+        progress = st.progress(0.0, text=t("data_update_running_info"))
+
+        def _on_progress(current: int, total: int, name: str) -> None:
+            progress.progress(current / total, text=f"[{current}/{total}] {name}")
+
+        count = _build(on_progress=_on_progress)
+        progress.empty()
+        st.success(t("data_update_done").format(count=count))
+        build_services.clear()
+        st.rerun()
 
 tab_search, tab_speed, tab_survival = st.tabs([t("tab_search"), t("tab_speed"), t("tab_survival")])
 

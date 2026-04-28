@@ -5,7 +5,7 @@ from application.calculator import StatCalculator
 from application.speed_service import SpeedService
 from application.survival_service import AttackInput, SurvivalService
 from domain.models.nature import NatureRegistry, BattleStat
-from shared.config import DATA_JSON_PATH, SPRITES_DIR
+from shared.config import DATA_JSON_PATH, SPRITES_DIR, MEGA_SPRITES_DIR
 from shared.i18n.translator import Translator, parse_accept_language
 
 
@@ -77,75 +77,132 @@ tab_search, tab_speed, tab_survival = st.tabs([t("tab_search"), t("tab_speed"), 
 
 # ── Search Tab ──────────────────────────────────────────────────────────────
 with tab_search:
+    from interfaces.streamlit.components.pokemon_selector import pokemon_selector
+    from interfaces.streamlit.components.type_badge import type_badge_html, types_html
+    from shared.type_chart import get_matchups
+
     st.header(t("search_header"))
-    query = st.text_input(
-        t("search_input_label"),
-        placeholder=t("search_placeholder"),
-        key="search_query",
-    )
+    selected_mon = pokemon_selector("search", t("search_input_label"), svc["local"], lang, t)
 
-    if query:
-        results = svc["local"].fuzzy_match(query)
+    if selected_mon is not None:
+        p = selected_mon
+        st.divider()
+        col_img, col_info = st.columns([1, 3])
+        with col_img:
+            sprite = SPRITES_DIR / f"{p.id}.png"
+            if sprite.exists():
+                st.image(str(sprite), width=160)
+        with col_info:
+            st.subheader(f"{p.name_zh}　{p.name_en.title()}　{p.name_ja}")
+            badge_html = types_html(p.types, t)
+            st.markdown(badge_html, unsafe_allow_html=True)
+            b = p.base_stats
+            st.table({
+                t("stat_col_name"):  t.strings("stat_names"),
+                t("stat_col_value"): [b.hp, b.attack, b.defense, b.sp_attack, b.sp_defense, b.speed],
+            })
 
-        if not results:
-            st.warning(t("search_not_found"))
-        else:
-            total = len(results)
+        # ── Type matchup ────────────────────────────────────────────────────
+        st.markdown(f"**{t('detail_type_matchup')}**")
+        matchups = get_matchups(list(p.types))
+        weaknesses  = sorted([(tp, v) for tp, v in matchups.items() if v > 1], key=lambda x: -x[1])
+        resistances = sorted([(tp, v) for tp, v in matchups.items() if 0 < v < 1], key=lambda x: x[1])
+        immunities  = [(tp, v) for tp, v in matchups.items() if v == 0]
 
-            # Reset page and selection when query changes
-            if st.session_state.get("_search_last_query") != query:
-                st.session_state["_search_page"] = 0
-                st.session_state["_search_last_query"] = query
-                st.session_state.pop("_selected_id", None)
+        if weaknesses:
+            st.markdown(f"*{t('detail_weaknesses')}*")
+            html_parts = []
+            cur_mult = None
+            for tp, v in weaknesses:
+                if v != cur_mult:
+                    cur_mult = v
+                    mult_str = "4×" if v == 4.0 else "2×"
+                    html_parts.append(f'<span style="font-size:11px;color:#f38ba8;margin:0 4px">{mult_str}</span>')
+                html_parts.append(type_badge_html(tp, t.type_name(tp)))
+            st.markdown("".join(html_parts), unsafe_allow_html=True)
 
-            PAGE_SIZE = 8
-            page  = st.session_state.get("_search_page", 0)
-            start = page * PAGE_SIZE
-            end   = min(start + PAGE_SIZE, total)
+        if resistances:
+            st.markdown(f"*{t('detail_resistances')}*")
+            html_parts = []
+            cur_mult = None
+            for tp, v in resistances:
+                if v != cur_mult:
+                    cur_mult = v
+                    mult_str = "¼×" if v == 0.25 else "½×"
+                    html_parts.append(f'<span style="font-size:11px;color:#89b4fa;margin:0 4px">{mult_str}</span>')
+                html_parts.append(type_badge_html(tp, t.type_name(tp)))
+            st.markdown("".join(html_parts), unsafe_allow_html=True)
 
-            # Card grid: 4 columns × 2 rows
-            for row_start in range(0, end - start, 4):
-                cols = st.columns(4)
-                for i, p in enumerate(results[start + row_start: start + row_start + 4]):
-                    with cols[i]:
-                        sprite = SPRITES_DIR / f"{p.id}.png"
-                        if sprite.exists():
-                            st.image(str(sprite), width=80)
-                        name = {"zh": p.name_zh, "en": p.name_en.title(), "ja": p.name_ja}[lang]
-                        if st.button(name, key=f"card_{p.id}", use_container_width=True):
-                            st.session_state["_selected_id"] = p.id
+        if immunities:
+            st.markdown(f"*{t('detail_immunities')}*")
+            html_parts = ['<span style="font-size:11px;color:#a6adc8;margin:0 4px">0×</span>']
+            for tp, _ in immunities:
+                html_parts.append(type_badge_html(tp, t.type_name(tp)))
+            st.markdown("".join(html_parts), unsafe_allow_html=True)
 
-            # Pagination controls
-            nav_l, nav_m, nav_r = st.columns([1, 2, 1])
-            if page > 0:
-                if nav_l.button(t("search_prev"), key="pg_prev"):
-                    st.session_state["_search_page"] = page - 1
-                    st.rerun()
-            nav_m.caption(
-                t("search_results_count").format(start=start + 1, end=end, total=total)
-            )
-            if end < total:
-                if nav_r.button(t("search_next"), key="pg_next"):
-                    st.session_state["_search_page"] = page + 1
-                    st.rerun()
+        # ── Abilities ────────────────────────────────────────────────────────
+        if p.abilities or p.dream_ability:
+            st.divider()
+            st.markdown(f"**{t('detail_abilities')}**")
+            abil_hint_key = f"_abil_desc_search_{p.id}"
 
-            # Detail view — shown below cards when a card has been clicked
-            if "_selected_id" in st.session_state:
-                p = svc["local"].get_by_id(st.session_state["_selected_id"])
-                st.divider()
-                col_img, col_info = st.columns([1, 3])
-                with col_img:
-                    sprite = SPRITES_DIR / f"{p.id}.png"
-                    if sprite.exists():
-                        st.image(str(sprite), width=160)
-                with col_info:
-                    st.subheader(f"{p.name_zh}　{p.name_en.title()}　{p.name_ja}")
-                    st.caption(t("search_types_label") + " / ".join(t.type_name(tp) for tp in p.types))
-                    b = p.base_stats
-                    st.table({
-                        t("stat_col_name"):  t.strings("stat_names"),
-                        t("stat_col_value"): [b.hp, b.attack, b.defense, b.sp_attack, b.sp_defense, b.speed],
-                    })
+            all_abilities = list(p.abilities)
+            if p.dream_ability:
+                all_abilities.append({**p.dream_ability, "_is_dream": True})
+
+            for i, ab in enumerate(all_abilities):
+                is_dream = ab.get("_is_dream", False)
+                ab_name = {"zh": ab.get("name_zh", ""), "en": ab.get("name_en", ""), "ja": ab.get("name_ja", "")}[lang]
+                prefix = t("detail_dream_ability_prefix") if is_dream else ""
+                label = f"{prefix}{ab_name}"
+                if st.button(label, key=f"_abil_btn_search_{p.id}_{i}"):
+                    ab_desc = {"zh": ab.get("desc_zh", ""), "en": ab.get("desc_en", ""), "ja": ab.get("desc_ja", "")}[lang]
+                    st.session_state[abil_hint_key] = f"**{label}**\n\n{ab_desc}"
+
+            if abil_hint_key in st.session_state:
+                st.info(st.session_state[abil_hint_key])
+            else:
+                st.caption(t("detail_ability_hint"))
+
+        # ── Mega forms ──────────────────────────────────────────────────────
+        if p.mega_forms:
+            st.divider()
+            st.markdown(f"**{t('detail_mega')}**")
+            for mega in p.mega_forms:
+                mega_name_key = "name_zh" if lang == "zh" else ("name_en" if lang == "en" else "name_ja")
+                with st.expander(mega.get(mega_name_key, mega.get("name_en", "Mega"))):
+                    mcol_img, mcol_info = st.columns([1, 3])
+                    with mcol_img:
+                        mega_sprite = MEGA_SPRITES_DIR / f"{p.id}-{mega['suffix']}.png"
+                        if mega_sprite.exists():
+                            st.image(str(mega_sprite), width=120)
+                    with mcol_info:
+                        mega_types = mega.get("types", [])
+                        if mega_types:
+                            st.markdown(types_html(tuple(mega_types), t), unsafe_allow_html=True)
+                        ms = mega.get("base_stats", {})
+                        orig = p.base_stats
+                        orig_vals = {"hp": orig.hp, "attack": orig.attack, "defense": orig.defense,
+                                     "sp_attack": orig.sp_attack, "sp_defense": orig.sp_defense, "speed": orig.speed}
+                        stat_names = t.strings("stat_names")
+                        stat_keys  = ["hp", "attack", "defense", "sp_attack", "sp_defense", "speed"]
+                        rows_data = []
+                        for sname, skey in zip(stat_names, stat_keys):
+                            mv = ms.get(skey, 0)
+                            ov = orig_vals.get(skey, 0)
+                            marker = " ▲" if mv > ov else ""
+                            rows_data.append({"stat": sname, "mega": f"{mv}{marker}", "base": ov})
+                        st.dataframe(rows_data, use_container_width=True, hide_index=True)
+
+                    mega_ability = mega.get("ability", {})
+                    if mega_ability:
+                        ab_name = {"zh": mega_ability.get("name_zh", ""), "en": mega_ability.get("name_en", ""), "ja": mega_ability.get("name_ja", "")}[lang]
+                        abil_key = f"_mega_abil_desc_{p.id}_{mega['suffix']}"
+                        if st.button(ab_name, key=f"_mega_abil_btn_{p.id}_{mega['suffix']}"):
+                            desc = {"zh": mega_ability.get("desc_zh", ""), "en": mega_ability.get("desc_en", ""), "ja": mega_ability.get("desc_ja", "")}[lang]
+                            st.session_state[abil_key] = f"**{ab_name}**\n\n{desc}"
+                        if abil_key in st.session_state:
+                            st.info(st.session_state[abil_key])
 
 # ── Speed Tab ────────────────────────────────────────────────────────────────
 with tab_speed:

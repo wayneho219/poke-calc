@@ -209,6 +209,13 @@ with tab_speed:
     from interfaces.streamlit.components.pokemon_selector import pokemon_selector
     from interfaces.streamlit.components.nature_selector import nature_selector
 
+    _MODIFIER_KEYS  = [
+        "speed_modifier_none", "speed_modifier_scarf", "speed_modifier_tailwind",
+        "speed_modifier_weather", "speed_modifier_paralysis", "speed_modifier_iron_ball",
+    ]
+    _MODIFIER_MULTS = [1.0, 1.5, 2.0, 2.0, 0.5, 0.5]
+    _modifier_labels = [f"{t(k)}　×{m}" for k, m in zip(_MODIFIER_KEYS, _MODIFIER_MULTS)]
+
     st.header(t("speed_header"))
     st.caption(t("speed_caption"))
 
@@ -219,12 +226,26 @@ with tab_speed:
         my_mon = pokemon_selector("speed_my", t("speed_name_label"), svc["local"], lang, t)
         st.markdown(f"*{t('nature_grid_header')}*")
         my_nature_en = nature_selector("speed_my", lang, t)
+        my_modifier_idx = st.selectbox(
+            t("speed_modifier_label"),
+            options=range(len(_modifier_labels)),
+            format_func=lambda i: _modifier_labels[i],
+            key="speed_my_modifier",
+        )
+        my_mult = _MODIFIER_MULTS[my_modifier_idx]
 
     with col2:
         st.subheader(t("speed_tgt_mon"))
         tgt_mon = pokemon_selector("speed_tgt", t("speed_name_label"), svc["local"], lang, t)
         st.markdown(f"*{t('nature_grid_header')}*")
         tgt_nature_en = nature_selector("speed_tgt", lang, t)
+        tgt_modifier_idx = st.selectbox(
+            t("speed_modifier_label"),
+            options=range(len(_modifier_labels)),
+            format_func=lambda i: _modifier_labels[i],
+            key="speed_tgt_modifier",
+        )
+        tgt_mult = _MODIFIER_MULTS[tgt_modifier_idx]
         tgt_sp = int(st.number_input(
             t("speed_tgt_sp_label"), min_value=0, max_value=32, value=0, step=1,
             key="speed_tgt_sp",
@@ -237,14 +258,17 @@ with tab_speed:
             my_mon_with_nature  = dataclasses.replace(my_mon,  nature=my_nature)
             tgt_mon_with_nature = dataclasses.replace(tgt_mon, nature=tgt_nature)
 
-            tgt_preview = svc["calc"].calc_stat(
+            tgt_preview = int(svc["calc"].calc_stat(
                 tgt_mon_with_nature.base_stats.speed, tgt_sp, tgt_mon_with_nature.nature, BattleStat.SPEED
-            )
-            my_preview = svc["calc"].calc_stat(
+            ) * tgt_mult)
+            my_preview = int(svc["calc"].calc_stat(
                 my_mon_with_nature.base_stats.speed, 0, my_mon_with_nature.nature, BattleStat.SPEED
-            )
+            ) * my_mult)
 
-            result = svc["speed"].min_sp_to_outspeed(my_mon_with_nature, tgt_mon_with_nature, target_sp=tgt_sp)
+            result = svc["speed"].min_sp_to_outspeed(
+                my_mon_with_nature, tgt_mon_with_nature,
+                target_sp=tgt_sp, my_mult=my_mult, tgt_mult=tgt_mult,
+            )
 
             st.divider()
             preview_cols = st.columns(2)

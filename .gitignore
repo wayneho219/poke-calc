@@ -10,3 +10,4 @@ env/
 venv/
 adapters/cache/
 data/sprites/
+.superpowers/

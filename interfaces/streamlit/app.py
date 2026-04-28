@@ -106,10 +106,37 @@ with tab_search:
             st.subheader(f"{p.name_zh}　{p.name_en.title()}　{p.name_ja}")
             badge_html = types_html(p.types, t)
             st.markdown(badge_html, unsafe_allow_html=True)
+
+            # ── Abilities (above stats) ──────────────────────────────────────
+            if p.abilities or p.dream_ability:
+                st.markdown(f"**{t('detail_abilities')}**")
+                abil_hint_key = f"_abil_desc_search_{p.id}"
+
+                all_abilities = list(p.abilities)
+                if p.dream_ability:
+                    all_abilities.append({**p.dream_ability, "_is_dream": True})
+
+                ab_cols = st.columns(len(all_abilities))
+                for i, (ab, col) in enumerate(zip(all_abilities, ab_cols)):
+                    is_dream = ab.get("_is_dream", False)
+                    ab_name = {"zh": ab.get("name_zh", ""), "en": ab.get("name_en", ""), "ja": ab.get("name_ja", "")}[lang]
+                    prefix = t("detail_dream_ability_prefix") if is_dream else ""
+                    label = f"{prefix}{ab_name}"
+                    with col:
+                        if st.button(label, key=f"_abil_btn_search_{p.id}_{i}"):
+                            ab_desc = {"zh": ab.get("desc_zh", ""), "en": ab.get("desc_en", ""), "ja": ab.get("desc_ja", "")}[lang]
+                            st.session_state[abil_hint_key] = f"**{label}**\n\n{ab_desc}"
+
+                if abil_hint_key in st.session_state:
+                    st.info(st.session_state[abil_hint_key])
+                else:
+                    st.caption(t("detail_ability_hint"))
+
+            # ── Radar chart ──────────────────────────────────────────────────
             fig = stat_radar_chart(p.base_stats, t.strings("stat_names"))
             st.plotly_chart(fig, use_container_width=True)
 
-        # ── Type matchup ────────────────────────────────────────────────────
+        # ── Type matchup ─────────────────────────────────────────────────────
         st.markdown(f"**{t('detail_type_matchup')}**")
         matchups = get_matchups(list(p.types))
         weaknesses  = sorted([(tp, v) for tp, v in matchups.items() if v > 1], key=lambda x: -x[1])
@@ -124,7 +151,9 @@ with tab_search:
                 if v != cur_mult:
                     cur_mult = v
                     mult_str = "4×" if v == 4.0 else "2×"
-                    html_parts.append(f'<span style="font-size:11px;color:#f38ba8;margin:0 4px">{mult_str}</span>')
+                    html_parts.append(
+                        f'<span style="font-size:15px;font-weight:bold;color:#f38ba8;margin:0 6px">{mult_str}</span>'
+                    )
                 html_parts.append(type_badge_html(tp, t.type_name(tp)))
             st.markdown("".join(html_parts), unsafe_allow_html=True)
 
@@ -136,42 +165,20 @@ with tab_search:
                 if v != cur_mult:
                     cur_mult = v
                     mult_str = "¼×" if v == 0.25 else "½×"
-                    html_parts.append(f'<span style="font-size:11px;color:#89b4fa;margin:0 4px">{mult_str}</span>')
+                    html_parts.append(
+                        f'<span style="font-size:15px;font-weight:bold;color:#89b4fa;margin:0 6px">{mult_str}</span>'
+                    )
                 html_parts.append(type_badge_html(tp, t.type_name(tp)))
             st.markdown("".join(html_parts), unsafe_allow_html=True)
 
         if immunities:
             st.markdown(f"*{t('detail_immunities')}*")
-            html_parts = ['<span style="font-size:11px;color:#a6adc8;margin:0 4px">0×</span>']
+            html_parts = ['<span style="font-size:15px;font-weight:bold;color:#a6adc8;margin:0 6px">0×</span>']
             for tp, _ in immunities:
                 html_parts.append(type_badge_html(tp, t.type_name(tp)))
             st.markdown("".join(html_parts), unsafe_allow_html=True)
 
-        # ── Abilities ────────────────────────────────────────────────────────
-        if p.abilities or p.dream_ability:
-            st.divider()
-            st.markdown(f"**{t('detail_abilities')}**")
-            abil_hint_key = f"_abil_desc_search_{p.id}"
-
-            all_abilities = list(p.abilities)
-            if p.dream_ability:
-                all_abilities.append({**p.dream_ability, "_is_dream": True})
-
-            for i, ab in enumerate(all_abilities):
-                is_dream = ab.get("_is_dream", False)
-                ab_name = {"zh": ab.get("name_zh", ""), "en": ab.get("name_en", ""), "ja": ab.get("name_ja", "")}[lang]
-                prefix = t("detail_dream_ability_prefix") if is_dream else ""
-                label = f"{prefix}{ab_name}"
-                if st.button(label, key=f"_abil_btn_search_{p.id}_{i}"):
-                    ab_desc = {"zh": ab.get("desc_zh", ""), "en": ab.get("desc_en", ""), "ja": ab.get("desc_ja", "")}[lang]
-                    st.session_state[abil_hint_key] = f"**{label}**\n\n{ab_desc}"
-
-            if abil_hint_key in st.session_state:
-                st.info(st.session_state[abil_hint_key])
-            else:
-                st.caption(t("detail_ability_hint"))
-
-        # ── Mega forms ──────────────────────────────────────────────────────
+        # ── Mega forms ───────────────────────────────────────────────────────
         if p.mega_forms:
             st.divider()
             st.markdown(f"**{t('detail_mega')}**")
@@ -195,10 +202,7 @@ with tab_search:
                                 defense=ms.get("defense", 0), sp_attack=ms.get("sp_attack", 0),
                                 sp_defense=ms.get("sp_defense", 0), speed=ms.get("speed", 0),
                             )
-                            mega_display_name = mega.get(
-                                "name_zh" if lang == "zh" else ("name_en" if lang == "en" else "name_ja"),
-                                "Mega"
-                            )
+                            mega_display_name = mega.get(mega_name_key, "Mega")
                             base_display_name = {"zh": p.name_zh, "en": p.name_en.title(), "ja": p.name_ja}[lang]
                             fig = stat_radar_chart(
                                 p.base_stats, t.strings("stat_names"),

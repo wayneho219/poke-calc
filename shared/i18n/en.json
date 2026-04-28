@@ -85,5 +85,12 @@
   "selector_placeholder": "Type to search...",
   "selector_clear": "Clear selection",
   "nature_grid_header": "Nature (select a cell)",
-  "nature_grid_clear": "Clear nature"
+  "nature_grid_clear": "Clear nature",
+  "speed_modifier_label": "Speed Modifier",
+  "speed_modifier_none": "None",
+  "speed_modifier_scarf": "Choice Scarf",
+  "speed_modifier_tailwind": "Tailwind",
+  "speed_modifier_weather": "Weather Speed Ability",
+  "speed_modifier_paralysis": "Paralysis",
+  "speed_modifier_iron_ball": "Iron Ball"
 }

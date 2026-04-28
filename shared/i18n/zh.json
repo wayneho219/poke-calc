@@ -85,5 +85,12 @@
   "selector_placeholder": "輸入名稱搜尋...",
   "selector_clear": "清除選擇",
   "nature_grid_header": "性格（點選格子）",
-  "nature_grid_clear": "清除性格"
+  "nature_grid_clear": "清除性格",
+  "speed_modifier_label": "速度修正",
+  "speed_modifier_none": "無",
+  "speed_modifier_scarf": "講究圍巾",
+  "speed_modifier_tailwind": "追風",
+  "speed_modifier_weather": "天氣倍速特性",
+  "speed_modifier_paralysis": "麻痺",
+  "speed_modifier_iron_ball": "黑色鐵球"
 }

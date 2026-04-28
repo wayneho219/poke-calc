@@ -85,5 +85,12 @@
   "selector_placeholder": "名前を入力して検索...",
   "selector_clear": "選択解除",
   "nature_grid_header": "せいかく（セルを選択）",
-  "nature_grid_clear": "せいかく解除"
+  "nature_grid_clear": "せいかく解除",
+  "speed_modifier_label": "すばやさ補正",
+  "speed_modifier_none": "なし",
+  "speed_modifier_scarf": "こだわりスカーフ",
+  "speed_modifier_tailwind": "おいかぜ",
+  "speed_modifier_weather": "天候倍速特性",
+  "speed_modifier_paralysis": "まひ",
+  "speed_modifier_iron_ball": "くろいてっきゅう"
 }

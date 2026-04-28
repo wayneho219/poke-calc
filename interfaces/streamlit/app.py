@@ -177,7 +177,6 @@ with tab_search:
                             st.image(str(mega_sprite), width=120)
                     with mcol_info:
                         from interfaces.streamlit.components.stat_radar import stat_radar_chart
-                        from domain.models.stats import StatSet
                         mega_types = mega.get("types", [])
                         if mega_types:
                             st.markdown(types_html(tuple(mega_types), t), unsafe_allow_html=True)

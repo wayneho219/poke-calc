@@ -5,6 +5,7 @@ from application.calculator import StatCalculator
 from application.speed_service import SpeedService
 from application.survival_service import AttackInput, SurvivalService
 from domain.models.nature import NatureRegistry, BattleStat
+from domain.models.stats import StatSet
 from shared.config import DATA_JSON_PATH, SPRITES_DIR, MEGA_SPRITES_DIR
 from shared.i18n.translator import Translator, parse_accept_language
 
@@ -93,14 +94,12 @@ with tab_search:
             if sprite.exists():
                 st.image(str(sprite), width=160)
         with col_info:
+            from interfaces.streamlit.components.stat_radar import stat_radar_chart
             st.subheader(f"{p.name_zh}　{p.name_en.title()}　{p.name_ja}")
             badge_html = types_html(p.types, t)
             st.markdown(badge_html, unsafe_allow_html=True)
-            b = p.base_stats
-            st.table({
-                t("stat_col_name"):  t.strings("stat_names"),
-                t("stat_col_value"): [b.hp, b.attack, b.defense, b.sp_attack, b.sp_defense, b.speed],
-            })
+            fig = stat_radar_chart(p.base_stats, t.strings("stat_names"))
+            st.plotly_chart(fig, use_container_width=True)
 
         # ── Type matchup ────────────────────────────────────────────────────
         st.markdown(f"**{t('detail_type_matchup')}**")
@@ -177,22 +176,30 @@ with tab_search:
                         if mega_sprite.exists():
                             st.image(str(mega_sprite), width=120)
                     with mcol_info:
+                        from interfaces.streamlit.components.stat_radar import stat_radar_chart
+                        from domain.models.stats import StatSet
                         mega_types = mega.get("types", [])
                         if mega_types:
                             st.markdown(types_html(tuple(mega_types), t), unsafe_allow_html=True)
                         ms = mega.get("base_stats", {})
-                        orig = p.base_stats
-                        orig_vals = {"hp": orig.hp, "attack": orig.attack, "defense": orig.defense,
-                                     "sp_attack": orig.sp_attack, "sp_defense": orig.sp_defense, "speed": orig.speed}
-                        stat_names = t.strings("stat_names")
-                        stat_keys  = ["hp", "attack", "defense", "sp_attack", "sp_defense", "speed"]
-                        rows_data = []
-                        for sname, skey in zip(stat_names, stat_keys):
-                            mv = ms.get(skey, 0)
-                            ov = orig_vals.get(skey, 0)
-                            marker = " ▲" if mv > ov else ""
-                            rows_data.append({"stat": sname, "mega": f"{mv}{marker}", "base": ov})
-                        st.dataframe(rows_data, use_container_width=True, hide_index=True)
+                        if ms:
+                            mega_stat_obj = StatSet(
+                                hp=ms.get("hp", 0), attack=ms.get("attack", 0),
+                                defense=ms.get("defense", 0), sp_attack=ms.get("sp_attack", 0),
+                                sp_defense=ms.get("sp_defense", 0), speed=ms.get("speed", 0),
+                            )
+                            mega_display_name = mega.get(
+                                "name_zh" if lang == "zh" else ("name_en" if lang == "en" else "name_ja"),
+                                "Mega"
+                            )
+                            base_display_name = {"zh": p.name_zh, "en": p.name_en.title(), "ja": p.name_ja}[lang]
+                            fig = stat_radar_chart(
+                                p.base_stats, t.strings("stat_names"),
+                                mega_stats=mega_stat_obj,
+                                mega_label=mega_display_name,
+                                base_label=base_display_name,
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
 
                     mega_ability = mega.get("ability", {})
                     if mega_ability:

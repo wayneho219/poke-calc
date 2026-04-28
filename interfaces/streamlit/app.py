@@ -206,6 +206,9 @@ with tab_search:
 
 # ── Speed Tab ────────────────────────────────────────────────────────────────
 with tab_speed:
+    from interfaces.streamlit.components.pokemon_selector import pokemon_selector
+    from interfaces.streamlit.components.nature_selector import nature_selector
+
     st.header(t("speed_header"))
     st.caption(t("speed_caption"))
 
@@ -213,73 +216,35 @@ with tab_speed:
 
     with col1:
         st.subheader(t("speed_my_mon"))
-        my_query = st.text_input(t("speed_name_label"), key="speed_my", placeholder="Garchomp / 烈咬陸鯊")
-        my_nature_name = st.selectbox(
-            t("speed_nature_label"),
-            options=["Hardy", "Timid", "Jolly", "Hasty", "Naive",
-                     "Brave", "Relaxed", "Quiet", "Sassy", t("speed_nature_other")],
-            key="speed_my_nature",
-        )
-        if my_nature_name == t("speed_nature_other"):
-            my_nature_name = st.text_input(t("speed_nature_input"), key="speed_my_nature_input")
+        my_mon = pokemon_selector("speed_my", t("speed_name_label"), svc["local"], lang, t)
+        st.markdown(f"*{t('nature_grid_header')}*")
+        my_nature_en = nature_selector("speed_my", lang, t)
 
     with col2:
         st.subheader(t("speed_tgt_mon"))
-        tgt_query = st.text_input(t("speed_name_label"), key="speed_tgt", placeholder="Kyogre / 蓋歐卡")
-        tgt_nature_name = st.selectbox(
-            t("speed_nature_label"),
-            options=["Hardy", "Timid", "Jolly", "Hasty", "Naive",
-                     "Brave", "Relaxed", "Quiet", "Sassy", t("speed_nature_other")],
-            key="speed_tgt_nature",
-        )
-        if tgt_nature_name == t("speed_nature_other"):
-            tgt_nature_name = st.text_input(t("speed_nature_input"), key="speed_tgt_nature_input")
+        tgt_mon = pokemon_selector("speed_tgt", t("speed_name_label"), svc["local"], lang, t)
+        st.markdown(f"*{t('nature_grid_header')}*")
+        tgt_nature_en = nature_selector("speed_tgt", lang, t)
         tgt_sp = int(st.number_input(
             t("speed_tgt_sp_label"), min_value=0, max_value=32, value=0, step=1,
             key="speed_tgt_sp",
         ))
 
-    if st.button(t("speed_button"), key="speed_calc") and my_query and tgt_query:
+    if my_mon is not None and tgt_mon is not None:
         try:
-            my_nature  = NatureRegistry.get_by_name(my_nature_name)
-            tgt_nature = NatureRegistry.get_by_name(tgt_nature_name)
-        except ValueError as e:
-            st.error(t("nature_invalid").format(error=e))
-            st.stop()
-
-        my_results  = svc["local"].fuzzy_match(my_query)
-        tgt_results = svc["local"].fuzzy_match(tgt_query)
-
-        if not my_results:
-            st.error(t("speed_my_not_found").format(name=my_query))
-        elif not tgt_results:
-            st.error(t("speed_tgt_not_found").format(name=tgt_query))
-        else:
-            st.session_state["_speed_my_id"]      = my_results[0].id
-            st.session_state["_speed_my_nature"]  = my_nature_name
-            st.session_state["_speed_tgt_id"]     = tgt_results[0].id
-            st.session_state["_speed_tgt_nature"] = tgt_nature_name
-
-    # Live result — re-renders whenever tgt_sp changes
-    if "_speed_my_id" in st.session_state:
-        try:
-            my_nature  = NatureRegistry.get_by_name(st.session_state["_speed_my_nature"])
-            tgt_nature = NatureRegistry.get_by_name(st.session_state["_speed_tgt_nature"])
-            my_mon  = dataclasses.replace(
-                svc["local"].get_by_id(st.session_state["_speed_my_id"]), nature=my_nature
-            )
-            tgt_mon = dataclasses.replace(
-                svc["local"].get_by_id(st.session_state["_speed_tgt_id"]), nature=tgt_nature
-            )
+            my_nature  = NatureRegistry.get_by_name(my_nature_en)  if my_nature_en  else NatureRegistry.get_by_name("Hardy")
+            tgt_nature = NatureRegistry.get_by_name(tgt_nature_en) if tgt_nature_en else NatureRegistry.get_by_name("Hardy")
+            my_mon_with_nature  = dataclasses.replace(my_mon,  nature=my_nature)
+            tgt_mon_with_nature = dataclasses.replace(tgt_mon, nature=tgt_nature)
 
             tgt_preview = svc["calc"].calc_stat(
-                tgt_mon.base_stats.speed, tgt_sp, tgt_mon.nature, BattleStat.SPEED
+                tgt_mon_with_nature.base_stats.speed, tgt_sp, tgt_mon_with_nature.nature, BattleStat.SPEED
             )
             my_preview = svc["calc"].calc_stat(
-                my_mon.base_stats.speed, 0, my_mon.nature, BattleStat.SPEED
+                my_mon_with_nature.base_stats.speed, 0, my_mon_with_nature.nature, BattleStat.SPEED
             )
 
-            result = svc["speed"].min_sp_to_outspeed(my_mon, tgt_mon, target_sp=tgt_sp)
+            result = svc["speed"].min_sp_to_outspeed(my_mon_with_nature, tgt_mon_with_nature, target_sp=tgt_sp)
 
             st.divider()
             preview_cols = st.columns(2)
@@ -287,18 +252,23 @@ with tab_speed:
             preview_cols[1].caption(t("speed_tgt_preview").format(speed=tgt_preview))
 
             if result is None:
-                st.error(t("speed_cannot_outspeed").format(my=my_mon.name_zh, tgt=tgt_mon.name_zh))
+                st.error(t("speed_cannot_outspeed").format(
+                    my=my_mon_with_nature.name_zh, tgt=tgt_mon_with_nature.name_zh
+                ))
             else:
                 st.success(t("speed_success").format(sp=result.sp_needed))
                 metric_cols = st.columns(3)
                 metric_cols[0].metric(t("speed_metric_sp"), result.sp_needed)
-                metric_cols[1].metric(t("speed_metric_speed").format(name=my_mon.name_zh), result.my_speed)
-                metric_cols[2].metric(t("speed_metric_speed").format(name=tgt_mon.name_zh), result.target_speed)
+                metric_cols[1].metric(t("speed_metric_speed").format(name=my_mon_with_nature.name_zh), result.my_speed)
+                metric_cols[2].metric(t("speed_metric_speed").format(name=tgt_mon_with_nature.name_zh), result.target_speed)
         except Exception:
             pass
 
 # ── Survival Tab ─────────────────────────────────────────────────────────────
 with tab_survival:
+    from interfaces.streamlit.components.pokemon_selector import pokemon_selector
+    from interfaces.streamlit.components.nature_selector import nature_selector
+
     st.header(t("surv_header"))
     st.caption(t("surv_caption"))
 
@@ -306,14 +276,9 @@ with tab_survival:
 
     with col_mon:
         st.subheader(t("surv_my_mon"))
-        surv_query = st.text_input(t("surv_name_label"), key="surv_mon", placeholder="Garchomp / 烈咬陸鯊")
-        surv_nature_name = st.selectbox(
-            t("surv_nature_label"),
-            options=["Hardy", "Bold", "Impish", "Relaxed", "Lax", t("surv_nature_other")],
-            key="surv_nature",
-        )
-        if surv_nature_name == t("surv_nature_other"):
-            surv_nature_name = st.text_input(t("surv_nature_input"), key="surv_nature_input")
+        surv_mon = pokemon_selector("surv_mon", t("surv_name_label"), svc["local"], lang, t)
+        st.markdown(f"*{t('nature_grid_header')}*")
+        surv_nature_en = nature_selector("surv_mon", lang, t)
 
     with col_atk:
         st.subheader(t("surv_atk_params"))
@@ -327,38 +292,24 @@ with tab_survival:
             key="surv_mult",
         )
 
-    if st.button(t("surv_button"), key="surv_calc") and surv_query:
+    if surv_mon is not None:
         try:
-            surv_nature = NatureRegistry.get_by_name(surv_nature_name)
-        except ValueError as e:
-            st.error(t("nature_invalid").format(error=e))
-            st.stop()
-
-        surv_results = svc["local"].fuzzy_match(surv_query)
-
-        if not surv_results:
-            st.error(t("surv_not_found").format(name=surv_query))
-        else:
-            mon = dataclasses.replace(surv_results[0], nature=surv_nature)
+            surv_nature = NatureRegistry.get_by_name(surv_nature_en) if surv_nature_en else NatureRegistry.get_by_name("Hardy")
+            mon = dataclasses.replace(surv_mon, nature=surv_nature)
             attack = AttackInput(
-                power=power,
-                attacker_atk=attacker_atk,
+                power=int(power),
+                attacker_atk=int(attacker_atk),
                 is_physical=is_physical,
-                type_multiplier=type_mult,
+                type_multiplier=float(type_mult),
             )
             prefer_hp, prefer_def = svc["survival"].optimize(mon, attack)
 
             st.divider()
-
-            # optimize() returns survived=False for both results when impossible;
-            # both flags are identical by service contract.
             if not prefer_hp.survived:
                 st.error(t("surv_impossible"))
             else:
                 st.success(t("surv_success").format(sp=prefer_hp.total_sp))
-
                 col_a, col_b = st.columns(2)
-
                 with col_a:
                     st.subheader(t("surv_plan_hp"))
                     st.metric(t("surv_metric_sp_hp"), prefer_hp.sp_hp)
@@ -366,7 +317,6 @@ with tab_survival:
                     st.metric(t("surv_metric_final_hp"), prefer_hp.final_hp)
                     st.metric(t("surv_metric_final_def"), prefer_hp.final_def)
                     st.caption(t("surv_metric_total").format(sp=prefer_hp.total_sp))
-
                 with col_b:
                     st.subheader(t("surv_plan_def"))
                     st.metric(t("surv_metric_sp_hp"), prefer_def.sp_hp)
@@ -374,3 +324,5 @@ with tab_survival:
                     st.metric(t("surv_metric_final_hp"), prefer_def.final_hp)
                     st.metric(t("surv_metric_final_def"), prefer_def.final_def)
                     st.caption(t("surv_metric_total").format(sp=prefer_def.total_sp))
+        except Exception:
+            pass

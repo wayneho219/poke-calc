@@ -120,3 +120,35 @@ class TestEdgeCases:
         repo = LocalJsonRepository(tmp)
         assert repo.get_by_id(1).sprite_url == ""
         tmp.unlink()
+
+
+class TestMegaIndex:
+    def test_mega_garchomp_searchable_by_zh(self, repo):
+        results = repo.fuzzy_match("Mega 烈咬陸鯊")
+        names = [p.name_zh for p in results]
+        assert "Mega 烈咬陸鯊" in names
+
+    def test_mega_garchomp_searchable_by_en(self, repo):
+        results = repo.fuzzy_match("Mega Garchomp")
+        names = [p.name_en for p in results]
+        assert "Mega Garchomp" in names
+
+    def test_mega_garchomp_has_mega_base_stats(self, repo):
+        results = repo.fuzzy_match("Mega Garchomp")
+        mega = next(p for p in results if p.name_en == "Mega Garchomp")
+        assert mega.base_stats.attack == 170
+        assert mega.base_stats.speed == 92
+
+    def test_mega_virtual_id_retrievable(self, repo):
+        # Virtual ID for Garchomp (445) first mega form = 445 + 10000 = 10445
+        mega = repo.get_by_id(10445)
+        assert mega.name_en == "Mega Garchomp"
+
+    def test_mega_is_final_evolution(self, repo):
+        mega = repo.get_by_id(10445)
+        assert mega.is_final_evolution is True
+
+    def test_base_pokemon_still_in_index(self, repo):
+        # Ensure base Garchomp is still accessible after adding Mega
+        base = repo.get_by_id(445)
+        assert base.name_en == "garchomp"

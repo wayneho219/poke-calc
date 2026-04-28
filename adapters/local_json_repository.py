@@ -26,6 +26,29 @@ def _parse(raw: dict) -> Pokemon:
     )
 
 
+def _parse_mega(base: Pokemon, mega: dict, form_index: int) -> Pokemon:
+    ms = mega.get("base_stats", {})
+    virtual_id = base.id + (form_index + 1) * 10000
+    ability = mega.get("ability")
+    return Pokemon(
+        id=virtual_id,
+        name_en=mega.get("name_en", f"Mega {base.name_en}"),
+        name_zh=mega.get("name_zh", f"Mega {base.name_zh}"),
+        name_ja=mega.get("name_ja", f"メガ{base.name_ja}"),
+        types=tuple(mega.get("types", list(base.types))),
+        base_stats=StatSet(
+            hp=ms.get("hp", 0), attack=ms.get("attack", 0),
+            defense=ms.get("defense", 0), sp_attack=ms.get("sp_attack", 0),
+            sp_defense=ms.get("sp_defense", 0), speed=ms.get("speed", 0),
+        ),
+        sprite_url=mega.get("sprite_path", ""),
+        is_final_evolution=True,
+        abilities=[ability] if ability else [],
+        dream_ability=None,
+        mega_forms=[],
+    )
+
+
 class LocalJsonRepository(AbstractPokeRepository):
 
     def __init__(self, json_path: Path) -> None:
@@ -40,11 +63,20 @@ class LocalJsonRepository(AbstractPokeRepository):
                 p = _parse(raw)
             except (KeyError, TypeError) as exc:
                 raise ValueError(f"Bad record at index {i}: {exc}") from exc
-            self._by_id[p.id]              = p
-            self._by_en[p.name_en.lower()] = p
-            self._by_zh[p.name_zh]         = p
-            self._by_ja[p.name_ja]         = p
-            self._all.append(p)
+            self._index(p)
+            for fi, mega in enumerate(p.mega_forms):
+                try:
+                    vp = _parse_mega(p, mega, fi)
+                    self._index(vp)
+                except Exception:
+                    pass
+
+    def _index(self, p: Pokemon) -> None:
+        self._by_id[p.id]              = p
+        self._by_en[p.name_en.lower()] = p
+        self._by_zh[p.name_zh]         = p
+        self._by_ja[p.name_ja]         = p
+        self._all.append(p)
 
     def get_by_id(self, pokemon_id: int, name_zh: str = "", name_ja: str = "") -> Pokemon:
         if pokemon_id not in self._by_id:

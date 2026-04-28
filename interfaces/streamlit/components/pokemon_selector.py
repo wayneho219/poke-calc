@@ -18,9 +18,12 @@ def pokemon_selector(
 
     Manages its own state in st.session_state under keys prefixed with `key`.
     Returns the currently selected Pokemon, or None.
+
+    Uses a version counter to reset the text_input widget, because Streamlit
+    forbids writing directly to a session_state key that is bound to an active widget.
     """
-    query_key    = f"_ps_query_{key}"
     selected_key = f"_ps_sel_{key}"
+    version_key  = f"_ps_ver_{key}"
 
     # ── Confirmed selection ──────────────────────────────────────────────────
     if st.session_state.get(selected_key) is not None:
@@ -44,14 +47,18 @@ def pokemon_selector(
         with col_btn:
             if st.button("✕", key=f"_ps_clear_{key}", help=translator("selector_clear")):
                 st.session_state[selected_key] = None
-                st.session_state[query_key] = ""
+                st.session_state[version_key] = st.session_state.get(version_key, 0) + 1
                 st.rerun()
         return p
 
     # ── Search input ─────────────────────────────────────────────────────────
+    # Include version in widget key so incrementing it resets the input to empty.
+    version = st.session_state.get(version_key, 0)
+    query_widget_key = f"_ps_query_{key}_{version}"
+
     query = st.text_input(
         label,
-        key=query_key,
+        key=query_widget_key,
         placeholder=translator("selector_placeholder"),
     )
 
@@ -67,7 +74,7 @@ def pokemon_selector(
             with col_name:
                 if st.button(name, key=f"_ps_btn_{key}_{p.id}", use_container_width=True):
                     st.session_state[selected_key] = p.id
-                    st.session_state[query_key] = ""
+                    st.session_state[version_key] = version + 1
                     st.rerun()
             with col_types:
                 badge_html = types_html(p.types, translator)

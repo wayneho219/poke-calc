@@ -22,6 +22,12 @@ _STAT_LABELS: dict[str, list[str]] = {
     "ja": ["こうげき", "ぼうぎょ", "とくこう", "とくぼう", "すばやさ"],
 }
 
+_MAX_LABEL_LEN = 5
+
+
+def _truncate(name: str) -> str:
+    return name if len(name) <= _MAX_LABEL_LEN else name[:_MAX_LABEL_LEN] + "…"
+
 
 def _cell_nature(row: int, col: int) -> Nature:
     if row == col:
@@ -34,7 +40,8 @@ def nature_selector(key: str, lang: str, translator) -> str | None:
     5×5 nature grid selector.
 
     Returns the selected nature's English name, or None if nothing selected.
-    Diagonal cells (neutral natures) are rendered as disabled buttons.
+    All 25 cells are clickable; diagonal (neutral) natures use secondary style.
+    Long names are truncated with full name shown in the button tooltip.
     """
     selected_key = f"_nat_{key}"
     current: str | None = st.session_state.get(selected_key)
@@ -57,32 +64,31 @@ def nature_selector(key: str, lang: str, translator) -> str | None:
         )
         for col in range(5):
             nature = _cell_nature(row, col)
-            nat_name = {"zh": nature.name_zh, "en": nature.name_en, "ja": nature.name_ja}[lang]
+            full_name = {"zh": nature.name_zh, "en": nature.name_en, "ja": nature.name_ja}[lang]
+            label = _truncate(full_name)
             is_neutral = (row == col)
             is_selected = (current == nature.name_en)
 
+            if is_neutral:
+                help_text = full_name + "（中性）"
+            else:
+                help_text = f"{full_name}　+{stat_labels[row]} / -{stat_labels[col]}"
+
+            btn_type = "primary" if is_selected else "secondary"
+
             with row_cols[col + 1]:
-                if is_neutral:
-                    st.button(
-                        nat_name,
-                        key=f"_nat_{key}_{row}_{col}",
-                        disabled=True,
-                        width="stretch",
-                    )
-                else:
-                    btn_type = "primary" if is_selected else "secondary"
-                    if st.button(
-                        nat_name,
-                        key=f"_nat_{key}_{row}_{col}",
-                        type=btn_type,
-                        width="stretch",
-                        help=f"+{stat_labels[row]} / -{stat_labels[col]}",
-                    ):
-                        if is_selected:
-                            st.session_state[selected_key] = None
-                        else:
-                            st.session_state[selected_key] = nature.name_en
-                        st.rerun()
+                if st.button(
+                    label,
+                    key=f"_nat_{key}_{row}_{col}",
+                    type=btn_type,
+                    width="stretch",
+                    help=help_text,
+                ):
+                    if is_selected:
+                        st.session_state[selected_key] = None
+                    else:
+                        st.session_state[selected_key] = nature.name_en
+                    st.rerun()
 
     if current:
         if st.button(translator("nature_grid_clear"), key=f"_nat_clear_{key}"):

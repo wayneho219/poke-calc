@@ -22,13 +22,17 @@ class SpeedService:
         user: Pokemon,
         target: Pokemon,
         target_sp: int = 0,
+        my_mult: float = 1.0,
+        tgt_mult: float = 1.0,
     ) -> Optional[SpeedResult]:
-        target_speed = self._calc.calc_stat(
-            target.base_stats.speed, target_sp, target.nature, BattleStat.SPEED
+        target_speed = int(
+            self._calc.calc_stat(target.base_stats.speed, target_sp, target.nature, BattleStat.SPEED)
+            * tgt_mult
         )
         for sp in range(0, 33):
-            my_speed = self._calc.calc_stat(
-                user.base_stats.speed, sp, user.nature, BattleStat.SPEED
+            my_speed = int(
+                self._calc.calc_stat(user.base_stats.speed, sp, user.nature, BattleStat.SPEED)
+                * my_mult
             )
             if my_speed > target_speed:
                 return SpeedResult(sp_needed=sp, my_speed=my_speed, target_speed=target_speed)
